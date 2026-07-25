@@ -9,7 +9,8 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout
+        uses: actions/checkout@v4
         with:
           fetch-depth: 0
 
@@ -18,84 +19,79 @@ jobs:
           python3 -m pip install --upgrade pip
           pip install platformio
 
-      - name: Copy Waveshare libraries (if missing)
+      - name: Fetch Waveshare repo and vendor libs if missing
         run: |
           set -e
           if [ ! -d "lib/XPowersLib" ]; then
             git clone --depth 1 https://github.com/waveshareteam/ESP32-S3-Touch-LCD-3.5.git /tmp/waveshare
             mkdir -p lib
-            cp -R /tmp/waveshare/Arduino/libraries/XPowersLib lib/XPowersLib
+            cp -R /tmp/waveshare/Arduino/libraries/XPowersLib lib/XPowersLib || true
             cp -R /tmp/waveshare/Arduino/libraries/GFX_Library_for_Arduino lib/GFX_Library_for_Arduino || true
             cp -R /tmp/waveshare/Arduino/libraries/lvgl lib/lvgl || true
             if [ -d "/tmp/waveshare/Arduino/libraries/TFT_eSPI" ]; then
               cp -R /tmp/waveshare/Arduino/libraries/TFT_eSPI lib/TFT_eSPI || true
             fi
+          else
+            echo "XPowersLib already vendored"
           fi
 
-      - name: Ensure boards folder has waveshare board
+      - name: Ensure boards folder has waveshare board files
         run: |
+          set -e
           if [ ! -d "boards/esp32-s3-touch-lcd-3-5" ]; then
             git clone --depth 1 https://github.com/waveshareteam/ESP32-S3-Touch-LCD-3.5.git /tmp/waveshare
             mkdir -p boards/esp32-s3-touch-lcd-3-5
-            if [ -f "/tmp/waveshare/Arduino/boards/esp32-s3-touch-lcd-3.5/esp32-s3-touch-lcd-3.5.ini" ]; then
-              cp /tmp/waveshare/Arduino/boards/esp32-s3-touch-lcd-3.5/esp32-s3-touch-lcd-3.5.ini boards/esp32-s3-touch-lcd-3-5/ || true
-            fi
-            if [ -f "/tmp/waveshare/Arduino/boards/esp32-s3-touch-lcd-3.5/pins_arduino.h" ]; then
-              cp /tmp/waveshare/Arduino/boards/esp32-s3-touch-lcd-3.5/pins_arduino.h boards/esp32-s3-touch-lcd-3-5/ || true
-            fi
+            cp /tmp/waveshare/Arduino/boards/esp32-s3-touch-lcd-3.5/* boards/esp32-s3-touch-lcd-3-5/ 2>/dev/null || true
+            echo "Copied board files if present"
+          else
+            echo "boards/esp32-s3-touch-lcd-3-5 already present"
           fi
 
-      - name: Add platformio env for waveshare board
+      - name: Add platformio env for waveshare board (if missing)
         run: |
-          python3 - << 'PY'
-from pathlib import Path
-p = Path('platformio.ini')
-text = p.read_text()
-if 'env:esp32s3-waveshare' not in text:
-    add = '''
-[env:esp32s3-waveshare]
-platform = espressif32
-framework = arduino
-board = esp32-s3-devkitc-1
-build_src_filter =${env.build_src_filter} +<boards/esp32-s3-touch-lcd-3-5>
-build_flags =
-\t${env.build_flags}
-\t-Iboards/esp32-s3-touch-lcd-3-5
-\t-DCONFIG_PMU_SDA=8
-\t-DCONFIG_PMU_SCL=7
-\t-DCONFIG_PMU_IRQ=15
-\t-DUSER_SETUP_LOADED=1
-\t-DHAS_SCREEN=1
+          set -e
+          if ! grep -q '\[env:esp32s3-waveshare\]' platformio.ini 2>/dev/null; then
+            cat >> platformio.ini <<'EOF'
 
-lib_deps =
-\t${env.lib_deps}
-'''
-    p.write_text(text+add)
-    print('Added env:esp32s3-waveshare to platformio.ini')
-else:
-    print('env already present')
-PY
+    [env:esp32s3-waveshare]
+    platform = espressif32
+    framework = arduino
+    board = esp32-s3-devkitc-1
+    build_src_filter =${env.build_src_filter} +<boards/esp32-s3-touch-lcd-3-5>
+    build_flags =
+      ${env.build_flags}
+      -Iboards/esp32-s3-touch-lcd-3-5
+      -DCONFIG_PMU_SDA=8
+      -DCONFIG_PMU_SCL=7
+      -DCONFIG_PMU_IRQ=15
+      -DUSER_SETUP_LOADED=1
+      -DHAS_SCREEN=1
 
-      - name: Disable PMU Watchdog by patching XPowersLib init
+    lib_deps =
+      ${env.lib_deps}
+
+    EOF
+            echo "env:esp32s3-waveshare appended to platformio.ini"
+          else
+            echo "env:esp32s3-waveshare already present"
+          fi
+
+      - name: Disable PMU watchdog in vendored XPowersLib (sed)
         run: |
+          set -e
           if [ -d lib/XPowersLib/src ]; then
-            python3 - << 'PY'
-from pathlib import Path
-p = Path('lib/XPowersLib/src')
-for f in p.rglob('*.cpp'):
-    s = f.read_text()
-    if 'enableWatchdog' in s and 'disableWatchdog' not in s:
-        s = s.replace('enableWatchdog();', 'disableWatchdog();\\n    // Disabled by CI integration to avoid PMU-induced resets. Enable with -DENABLE_PMU_WDT')
-        f.write_text(s)
-        print('Patched', f)
-PY
+            find lib/XPowersLib/src -type f -name '*.cpp' -print0 | xargs -0 sed -i -e "s/enableWatchdog();/disableWatchdog();\n    \/\/ Disabled by CI: avoid PMU-induced resets. Enable with -DENABLE_PMU_WDT/g" || true
+            echo "Patched enableWatchdog -> disableWatchdog in XPowersLib cpp files (if any)."
+          else
+            echo "lib/XPowersLib/src not found, skipping patch."
           fi
 
       - name: Build firmware for Waveshare env
         run: |
+          set -e
           pio run -e esp32s3-waveshare -v
 
-      - name: Upload artifact
+      - name: Upload firmware artifact
         if: success()
         uses: actions/upload-artifact@v4
         with:
