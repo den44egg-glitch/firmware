@@ -42,12 +42,10 @@ jobs:
           rm -rf /tmp/waveshare
           git clone --depth 1 https://github.com/waveshareteam/ESP32-S3-Touch-LCD-3.5.git /tmp/waveshare
           
-          FW_CORE_DIR=$(find ~/.platformio/packages -type d -name "framework-arduinoespressif32" | head -n 1)
-          if [ -z "$FW_CORE_DIR" ]; then
-            pio pkg install -p espressif32
-            FW_CORE_DIR=$(find ~/.platformio/packages -type d -name "framework-arduinoespressif32" | head -n 1)
-          fi
+          # Загружаем платформу espressif32 заранее через стандартный запуск, чтобы папки создались гарантированно
+          pio platform install espressif32
           
+          FW_CORE_DIR=$(find ~/.platformio/packages -type d -name "framework-arduinoespressif32" | head -n 1)
           if [ -n "$FW_CORE_DIR" ]; then
             mkdir -p "$FW_CORE_DIR/cores/esp32"
             cp /tmp/waveshare/Arduino/boards/esp32-s3-touch-lcd-3-5/pins_arduino.h "$FW_CORE_DIR/cores/esp32/"
