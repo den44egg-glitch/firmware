@@ -41,7 +41,7 @@ jobs:
           if [ ! -d "boards/esp32-s3-touch-lcd-3-5" ]; then
             git clone --depth 1 https://github.com/waveshareteam/ESP32-S3-Touch-LCD-3.5.git /tmp/waveshare
             mkdir -p boards/esp32-s3-touch-lcd-3-5
-            cp /tmp/waveshare/Arduino/boards/esp32-s3-touch-lcd-3.5/* boards/esp32-s3-touch-lcd-3-5/ 2>/dev/null || true
+            cp /tmp/waveshare/Arduino/boards/esp32-s3-touch-lcd-3-5/* boards/esp32-s3-touch-lcd-3-5/ 2>/dev/null || true
             echo "Copied board files if present"
           else
             echo "boards/esp32-s3-touch-lcd-3-5 already present"
@@ -51,26 +51,7 @@ jobs:
         run: |
           set -e
           if ! grep -q '\[env:esp32s3-waveshare\]' platformio.ini 2>/dev/null; then
-            cat >> platformio.ini <<'EOF'
-
-    [env:esp32s3-waveshare]
-    platform = espressif32
-    framework = arduino
-    board = esp32-s3-devkitc-1
-    build_src_filter =${env.build_src_filter} +<boards/esp32-s3-touch-lcd-3-5>
-    build_flags =
-      ${env.build_flags}
-      -Iboards/esp32-s3-touch-lcd-3-5
-      -DCONFIG_PMU_SDA=8
-      -DCONFIG_PMU_SCL=7
-      -DCONFIG_PMU_IRQ=15
-      -DUSER_SETUP_LOADED=1
-      -DHAS_SCREEN=1
-
-    lib_deps =
-      ${env.lib_deps}
-
-    EOF
+            printf '\n[env:esp32s3-waveshare]\nplatform = espressif32\nframework = arduino\nboard = esp32-s3-devkitc-1\nbuild_src_filter = ${env.build_src_filter} +<boards/esp32-s3-touch-lcd-3-5>\nbuild_flags =\n  ${env.build_flags}\n  -Iboards/esp32-s3-touch-lcd-3-5\n  -DCONFIG_PMU_SDA=8\n  -DCONFIG_PMU_SCL=7\n  -DCONFIG_PMU_IRQ=15\n  -DUSER_SETUP_LOADED=1\n  -DHAS_SCREEN=1\nlib_deps =\n  ${env.lib_deps}\n' >> platformio.ini
             echo "env:esp32s3-waveshare appended to platformio.ini"
           else
             echo "env:esp32s3-waveshare already present"
