@@ -22,6 +22,7 @@ jobs:
       - name: Fetch Waveshare repo and vendor libs if missing
         run: |
           set -e
+          rm -rf /tmp/waveshare
           if [ ! -d "lib/XPowersLib" ]; then
             git clone --depth 1 https://github.com/waveshareteam/ESP32-S3-Touch-LCD-3.5.git /tmp/waveshare
             mkdir -p lib
@@ -38,6 +39,7 @@ jobs:
       - name: Ensure boards folder has waveshare board files
         run: |
           set -e
+          rm -rf /tmp/waveshare
           if [ ! -d "boards/esp32-s3-touch-lcd-3-5" ]; then
             git clone --depth 1 https://github.com/waveshareteam/ESP32-S3-Touch-LCD-3.5.git /tmp/waveshare
             mkdir -p boards/esp32-s3-touch-lcd-3-5
