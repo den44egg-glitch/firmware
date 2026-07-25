@@ -36,21 +36,27 @@ jobs:
             echo "XPowersLib already vendored"
           fi
 
-      - name: Ensure boards folder has waveshare board files
+      - name: Prepare board files and global Arduino variant
         run: |
           set -e
           rm -rf /tmp/waveshare
           git clone --depth 1 https://github.com/waveshareteam/ESP32-S3-Touch-LCD-3.5.git /tmp/waveshare
           
+          # Копируем в локальную папку проекта для флагов
           mkdir -p boards/esp32-s3-touch-lcd-3-5
           cp /tmp/waveshare/Arduino/boards/esp32-s3-touch-lcd-3-5/* boards/esp32-s3-touch-lcd-3-5/ 2>/dev/null || true
-          echo "Board files configured successfully"
+          
+          # Создаем глобальный вариант в папке платформы esp32, чтобы pins_arduino.h был виден всегда
+          VARIANT_DIR="$HOME/.platformio/packages/framework-arduinoespressif32/variants/esp32s3-waveshare"
+          mkdir -p "$VARIANT_DIR"
+          cp /tmp/waveshare/Arduino/boards/esp32-s3-touch-lcd-3-5/* "$VARIANT_DIR/" 2>/dev/null || true
+          echo "Global variant and board files configured successfully"
 
       - name: Add platformio env for waveshare board (if missing)
         run: |
           set -e
           if ! grep -q '\[env:esp32s3-waveshare\]' platformio.ini 2>/dev/null; then
-            printf '\n[env:esp32s3-waveshare]\nplatform = espressif32\nframework = arduino\nboard = esp32-s3-devkitc-1\nboard_build.variants_dir = boards\nboard_build.variant = esp32-s3-touch-lcd-3-5\nbuild_src_filter = ${env.build_src_filter} +<boards/esp32-s3-touch-lcd-3-5>\nbuild_flags =\n  ${env.build_flags}\n  -Iboards/esp32-s3-touch-lcd-3-5\n  -DCONFIG_PMU_SDA=8\n  -DCONFIG_PMU_SCL=7\n  -DCONFIG_PMU_IRQ=15\n  -DUSER_SETUP_LOADED=1\n  -DHAS_SCREEN=1\nlib_deps =\n  ${env.lib_deps}\n' >> platformio.ini
+            printf '\n[env:esp32s3-waveshare]\nplatform = espressif32\nframework = arduino\nboard = esp32-s3-devkitc-1\nboard_build.variant = esp32s3-waveshare\nbuild_src_filter = ${env.build_src_filter} +<boards/esp32-s3-touch-lcd-3-5>\nbuild_flags =\n  ${env.build_flags}\n  -Iboards/esp32-s3-touch-lcd-3-5\n  -DCONFIG_PMU_SDA=8\n  -DCONFIG_PMU_SCL=7\n  -DCONFIG_PMU_IRQ=15\n  -DUSER_SETUP_LOADED=1\n  -DHAS_SCREEN=1\nlib_deps =\n  ${env.lib_deps}\n' >> platformio.ini
             echo "env:esp32s3-waveshare appended to platformio.ini"
           else
             echo "env:esp32s3-waveshare already present"
