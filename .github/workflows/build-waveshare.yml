@@ -24,16 +24,13 @@ jobs:
           python -m pip install --upgrade pip
           pip install platformio
 
-      - name: Prepare Waveshare Board Variant & Vendor Libs
+      - name: Prepare Waveshare Vendor Libs
         run: |
           set -e
+          # Скачиваем репозиторий Waveshare только ради библиотек
           git clone --depth 1 https://github.com/waveshareteam/ESP32-S3-Touch-LCD-3.5.git /tmp/waveshare
           
-          # БЕРЕМ ФАЙЛЫ ИЗ ТВОЕГО РЕПОЗИТОРИЯ, А НЕ ИЗ TMP!
-          mkdir -p custom_variants
-          cp -R boards/esp32-s3-touch-lcd-3-5 custom_variants/
-          
-          # Копируем библиотеки
+          # Копируем библиотеки в локальную папку lib (игнорируя ошибки, если папки уже есть)
           mkdir -p lib
           cp -R /tmp/waveshare/Arduino/libraries/XPowersLib lib/ || true
           cp -R /tmp/waveshare/Arduino/libraries/GFX_Library_for_Arduino lib/ || true
@@ -43,6 +40,7 @@ jobs:
       - name: Patch XPowersLib (Disable PMU Watchdog)
         run: |
           set -e
+          # Отключаем ватчдог, чтобы плата не уходила в цикличную перезагрузку
           if [ -d lib/XPowersLib/src ]; then
             find lib/XPowersLib/src -type f -name '*.cpp' -print0 | xargs -0 sed -i -e "s/enableWatchdog();/disableWatchdog();\n    \/\/ Disabled by CI/g" || true
           fi
@@ -50,17 +48,14 @@ jobs:
       - name: Configure PlatformIO Environment
         run: |
           set -e
+          # Добавляем конфигурацию стандартной платы ESP32-S3, где pins_arduino.h уже существует в самом фреймворке
           if ! grep -q '\[env:esp32s3-waveshare\]' platformio.ini 2>/dev/null; then
             cat << 'EOF' >> platformio.ini
 
           [env:esp32s3-waveshare]
           platform = espressif32
           framework = arduino
-          
-          # Подключаем твою папку как официальный вариант
           board = esp32-s3-devkitc-1
-          board_build.variants_dir = custom_variants
-          board_build.variant = esp32-s3-touch-lcd-3-5
           board_build.flash_size = 16MB
           
           build_flags =
@@ -73,6 +68,8 @@ jobs:
             
           lib_deps =
             ${env.lib_deps}
+            SPI
+            Wire
           EOF
           fi
 
