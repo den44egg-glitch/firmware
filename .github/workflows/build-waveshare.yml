@@ -36,7 +36,7 @@ jobs:
             echo "XPowersLib already vendored"
           fi
 
-      - name: Ensure boards folder and patch HAL tft.h include
+      - name: Setup board files and ensure clean tft.h
         run: |
           set -e
           rm -rf /tmp/waveshare
@@ -45,17 +45,14 @@ jobs:
           mkdir -p boards/esp32-s3-touch-lcd-3-5
           cp /tmp/waveshare/Arduino/boards/esp32-s3-touch-lcd-3-5/* boards/esp32-s3-touch-lcd-3-5/ 2>/dev/null || true
           
-          # Патчим include в lib/HAL/display/tft.h, чтобы файл брался прямо из папки платы
-          if [ -f "lib/HAL/display/tft.h" ]; then
-            sed -i 's/#include <pins_arduino.h>/#include <..\/..\/..\/boards\/esp32-s3-touch-lcd-3-5\/pins_arduino.h>/g' lib/HAL/display/tft.h
-            echo "Successfully patched tft.h include path"
-          fi
+          # Возвращаем девственно чистый #include <pins_arduino.h> в tft.h путем переключения git checkout этого файла
+          git checkout lib/HAL/display/tft.h || true
 
       - name: Add platformio env for waveshare board (if missing)
         run: |
           set -e
           if ! grep -q '\[env:esp32s3-waveshare\]' platformio.ini 2>/dev/null; then
-            printf '\n[env:esp32s3-waveshare]\nplatform = espressif32\nframework = arduino\nboard = esp32-s3-devkitc-1\nboard_build.flash_size = 16MB\nbuild_src_filter = ${env.build_src_filter} +<boards/esp32-s3-touch-lcd-3-5>\nbuild_flags =\n  ${env.build_flags}\n  -Iboards/esp32-s3-touch-lcd-3-5\n  -DCONFIG_PMU_SDA=8\n  -DCONFIG_PMU_SCL=7\n  -DCONFIG_PMU_IRQ=15\n  -DUSER_SETUP_LOADED=1\n  -DHAS_SCREEN=1\nlib_deps =\n  ${env.lib_deps}\n' >> platformio.ini
+            printf '\n[env:esp32s3-waveshare]\nplatform = espressif32\nframework = arduino\nboard = esp32-s3-devkitc-1\nboard_build.flash_size = 16MB\nbuild_src_filter = ${env.build_src_filter} +<boards/esp32-s3-touch-lcd-3-5>\nbuild_flags =\n  ${env.build_flags}\n  -Iboards/esp32-s3-touch-lcd-3-5\n  -I.pio/libdeps/esp32s3-waveshare/HAL\n  -DCONFIG_PMU_SDA=8\n  -DCONFIG_PMU_SCL=7\n  -DCONFIG_PMU_IRQ=15\n  -DUSER_SETUP_LOADED=1\n  -DHAS_SCREEN=1\nlib_deps =\n  ${env.lib_deps}\n' >> platformio.ini
             echo "env:esp32s3-waveshare appended to platformio.ini"
           else
             echo "env:esp32s3-waveshare already present"
@@ -74,6 +71,8 @@ jobs:
       - name: Build firmware for Waveshare env
         run: |
           set -e
+          # Очищаем старый кэш сборки и запускаем компиляцию
+          pio run -e esp32s3-waveshare -t clean || true
           pio run -e esp32s3-waveshare -v
 
       - name: Upload firmware artifact
