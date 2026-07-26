@@ -36,7 +36,7 @@ jobs:
             echo "XPowersLib already vendored"
           fi
 
-      - name: Setup board files and completely neutralize pins_arduino.h in HAL
+      - name: Setup board files and inject into global framework variant
         run: |
           set -e
           rm -rf /tmp/waveshare
@@ -45,10 +45,15 @@ jobs:
           mkdir -p boards/esp32-s3-touch-lcd-3-5
           cp /tmp/waveshare/Arduino/boards/esp32-s3-touch-lcd-3-5/* boards/esp32-s3-touch-lcd-3-5/ 2>/dev/null || true
           
-          # Удаляем строчку #include <pins_arduino.h> из tft.h, чтобы компилятор её не искал
-          if [ -f "lib/HAL/display/tft.h" ]; then
-            sed -i '/pins_arduino.h/d' lib/HAL/display/tft.h
-            echo "Successfully removed pins_arduino.h dependency from tft.h"
+          # Устанавливаем платформу espressif32 заранее, чтобы появились системные папки
+          pio platform install espressif32 || true
+          
+          # Копируем файлы пинов туда, где их ищет системный SPI.h (в вариант esp32s3 фреймворка)
+          FW_DIR=$(find ~/.platformio/packages -type d -name "framework-arduinoespressif32" | head -n 1)
+          if [ -n "$FW_DIR" ]; then
+            mkdir -p "$FW_DIR/variants/esp32s3"
+            cp /tmp/waveshare/Arduino/boards/esp32-s3-touch-lcd-3-5/* "$FW_DIR/variants/esp32s3/"
+            echo "Successfully injected pins into framework variants/esp32s3"
           fi
 
       - name: Add platformio env for waveshare board (if missing)
