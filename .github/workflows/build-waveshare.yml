@@ -27,15 +27,13 @@ jobs:
       - name: Prepare Waveshare Board Variant & Vendor Libs
         run: |
           set -e
-          # Клонируем исходники Waveshare
           git clone --depth 1 https://github.com/waveshareteam/ESP32-S3-Touch-LCD-3.5.git /tmp/waveshare
           
-          # 1. Создаем официальную структуру вариантов плат для PlatformIO
-          # Это решает проблему pins_arduino.h на 100%
-          mkdir -p custom_variants/esp32-s3-touch-lcd-3-5
-          cp /tmp/waveshare/Arduino/boards/esp32-s3-touch-lcd-3-5/* custom_variants/esp32-s3-touch-lcd-3-5/
+          # БЕРЕМ ФАЙЛЫ ИЗ ТВОЕГО РЕПОЗИТОРИЯ, А НЕ ИЗ TMP!
+          mkdir -p custom_variants
+          cp -R boards/esp32-s3-touch-lcd-3-5 custom_variants/
           
-          # 2. Копируем библиотеки
+          # Копируем библиотеки
           mkdir -p lib
           cp -R /tmp/waveshare/Arduino/libraries/XPowersLib lib/ || true
           cp -R /tmp/waveshare/Arduino/libraries/GFX_Library_for_Arduino lib/ || true
@@ -45,7 +43,6 @@ jobs:
       - name: Patch XPowersLib (Disable PMU Watchdog)
         run: |
           set -e
-          # Отключаем ватчдог, чтобы плата не уходила в ребут
           if [ -d lib/XPowersLib/src ]; then
             find lib/XPowersLib/src -type f -name '*.cpp' -print0 | xargs -0 sed -i -e "s/enableWatchdog();/disableWatchdog();\n    \/\/ Disabled by CI/g" || true
           fi
@@ -53,7 +50,6 @@ jobs:
       - name: Configure PlatformIO Environment
         run: |
           set -e
-          # Добавляем конфигурацию с четким указанием кастомной папки вариантов (variants_dir)
           if ! grep -q '\[env:esp32s3-waveshare\]' platformio.ini 2>/dev/null; then
             cat << 'EOF' >> platformio.ini
 
@@ -61,7 +57,7 @@ jobs:
           platform = espressif32
           framework = arduino
           
-          # Базовая плата и наша переопределенная конфигурация
+          # Подключаем твою папку как официальный вариант
           board = esp32-s3-devkitc-1
           board_build.variants_dir = custom_variants
           board_build.variant = esp32-s3-touch-lcd-3-5
