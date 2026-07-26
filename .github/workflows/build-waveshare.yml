@@ -36,7 +36,7 @@ jobs:
             echo "XPowersLib already vendored"
           fi
 
-      - name: Ensure boards folder has waveshare board files
+      - name: Ensure boards folder and patch HAL tft.h include
         run: |
           set -e
           rm -rf /tmp/waveshare
@@ -44,7 +44,12 @@ jobs:
           
           mkdir -p boards/esp32-s3-touch-lcd-3-5
           cp /tmp/waveshare/Arduino/boards/esp32-s3-touch-lcd-3-5/* boards/esp32-s3-touch-lcd-3-5/ 2>/dev/null || true
-          echo "Board files configured successfully"
+          
+          # Патчим include в lib/HAL/display/tft.h, чтобы файл брался прямо из папки платы
+          if [ -f "lib/HAL/display/tft.h" ]; then
+            sed -i 's/#include <pins_arduino.h>/#include <..\/..\/..\/boards\/esp32-s3-touch-lcd-3-5\/pins_arduino.h>/g' lib/HAL/display/tft.h
+            echo "Successfully patched tft.h include path"
+          fi
 
       - name: Add platformio env for waveshare board (if missing)
         run: |
@@ -69,9 +74,6 @@ jobs:
       - name: Build firmware for Waveshare env
         run: |
           set -e
-          # Создаем структуру директорий для сборки и копируем туда pins_arduino.h до старта компилятора
-          mkdir -p .pio/build/esp32s3-waveshare/include
-          cp boards/esp32-s3-touch-lcd-3-5/pins_arduino.h .pio/build/esp32s3-waveshare/include/ || true
           pio run -e esp32s3-waveshare -v
 
       - name: Upload firmware artifact
