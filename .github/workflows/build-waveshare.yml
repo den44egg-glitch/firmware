@@ -36,26 +36,32 @@ jobs:
             echo "XPowersLib already vendored"
           fi
 
-      - name: Direct copy pins_arduino.h into HAL include paths
+      - name: Deep system-level pins_arduino.h injection
         run: |
           set -e
           rm -rf /tmp/waveshare
           git clone --depth 1 https://github.com/waveshareteam/ESP32-S3-Touch-LCD-3.5.git /tmp/waveshare
           
-          # Копируем пины во все потенциальные подпапки HAL, чтобы компилятор их гарантированно зацепил
-          if [ -d "lib/HAL" ]; then
-            cp /tmp/waveshare/Arduino/boards/esp32-s3-touch-lcd-3-5/pins_arduino.h lib/HAL/ || true
-            if [ -d "lib/HAL/display" ]; then
-              cp /tmp/waveshare/Arduino/boards/esp32-s3-touch-lcd-3-5/pins_arduino.h lib/HAL/display/ || true
+          # Устанавливаем платформу, чтобы инициализировать структуру папок PlatformIO
+          pio platform install espressif32 || true
+          
+          # Находим все возможные папки cores/esp32 иinclude в системе и закидываем туда pins_arduino.h
+          find ~/.platformio -type d -name "esp32" | while read -r dir; do
+            if [ -d "$dir" ]; then
+              cp /tmp/waveshare/Arduino/boards/esp32-s3-touch-lcd-3-5/pins_arduino.h "$dir/" || true
+              echo "Injected into $dir"
             fi
-          fi
-          echo "Successfully injected pins_arduino.h directly into lib/HAL"
+          done
+          
+          # Создаем также локальную папку include в корне для подстраховки
+          mkdir -p include
+          cp /tmp/waveshare/Arduino/boards/esp32-s3-touch-lcd-3-5/pins_arduino.h include/
 
       - name: Add platformio env for waveshare board (if missing)
         run: |
           set -e
           if ! grep -q '\[env:esp32s3-waveshare\]' platformio.ini 2>/dev/null; then
-            printf '\n[env:esp32s3-waveshare]\nplatform = espressif32\nframework = arduino\nboard = esp32-s3-devkitc-1\nboard_build.flash_size = 16MB\nbuild_src_filter = ${env.build_src_filter} +<lib/HAL>\nbuild_flags =\n  ${env.build_flags}\n  -Ilib/HAL\n  -Ilib/HAL/display\n  -DCONFIG_PMU_SDA=8\n  -DCONFIG_PMU_SCL=7\n  -DCONFIG_PMU_IRQ=15\n  -DUSER_SETUP_LOADED=1\n  -DHAS_SCREEN=1\nlib_deps =\n  ${env.lib_deps}\n' >> platformio.ini
+            printf '\n[env:esp32s3-waveshare]\nplatform = espressif32\nframework = arduino\nboard = esp32-s3-devkitc-1\nboard_build.flash_size = 16MB\nbuild_src_filter = ${env.build_src_filter} +<boards/esp32-s3-touch-lcd-3-5>\nbuild_flags =\n  ${env.build_flags}\n  -Iinclude\n  -Iboards/esp32-s3-touch-lcd-3-5\n  -DCONFIG_PMU_SDA=8\n  -DCONFIG_PMU_SCL=7\n  -DCONFIG_PMU_IRQ=15\n  -DUSER_SETUP_LOADED=1\n  -DHAS_SCREEN=1\nlib_deps =\n  ${env.lib_deps}\n' >> platformio.ini
             echo "env:esp32s3-waveshare appended to platformio.ini"
           else
             echo "env:esp32s3-waveshare already present"
