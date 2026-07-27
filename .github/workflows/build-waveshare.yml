@@ -32,21 +32,18 @@ jobs:
           cp -R /tmp/waveshare/Arduino/libraries/XPowersLib lib/ || true
           cp -R /tmp/waveshare/Arduino/libraries/GFX_Library_for_Arduino lib/ || true
           cp -R /tmp/waveshare/Arduino/libraries/lvgl lib/ || true
-          cp -R /tmp/waveshare/Arduino/libraries/TFT_eSPI lib/ || true
+          if [ -d "/tmp/waveshare/Arduino/libraries/TFT_eSPI" ]; then
+            cp -R /tmp/waveshare/Arduino/libraries/TFT_eSPI lib/ || true
+          fi
 
-      - name: FORCE INJECT pins_arduino.h
+      - name: Ensure include/pins_arduino.h exists
         run: |
           set -e
-          # PlatformIO НИКОГДА не игнорирует папку include. 
-          # Мы кладем файл туда, чтобы компилятор нашел его гарантированно.
           mkdir -p include
           if [ -f "boards/esp32-s3-touch-lcd-3-5/pins_arduino.h" ]; then
             cp boards/esp32-s3-touch-lcd-3-5/pins_arduino.h include/
-            echo "pins_arduino.h successfully forced into global include"
           else
-            # Если файла почему-то нет, создаем заглушку, чтобы компилятор заткнулся
             echo '#include <Arduino.h>' > include/pins_arduino.h
-            echo "Fallback pins_arduino.h created"
           fi
 
       - name: Patch XPowersLib (Disable PMU Watchdog)
@@ -56,7 +53,7 @@ jobs:
             find lib/XPowersLib/src -type f -name '*.cpp' -print0 | xargs -0 sed -i -e "s/enableWatchdog();/disableWatchdog();\n    \/\/ Disabled by CI/g" || true
           fi
 
-      - name: Configure PlatformIO Environment
+      - name: Configure PlatformIO Environment with Screen Macro Flags
         run: |
           set -e
           if ! grep -q '\[env:esp32s3-waveshare\]' platformio.ini 2>/dev/null; then
@@ -65,11 +62,7 @@ jobs:
           [env:esp32s3-waveshare]
           platform = espressif32
           framework = arduino
-          
-          # Указываем твою плату официально
           board = esp32-s3-devkitc-1
-          board_build.variants_dir = boards
-          board_build.variant = esp32-s3-touch-lcd-3-5
           board_build.flash_size = 16MB
           
           build_flags =
@@ -80,6 +73,9 @@ jobs:
             -DCONFIG_PMU_IRQ=15
             -DUSER_SETUP_LOADED=1
             -DHAS_SCREEN=1
+            -DTFT_WIDTH=320
+            -DTFT_HEIGHT=480
+            -DILI9488_DRIVER=1
             
           lib_deps =
             ${env.lib_deps}
