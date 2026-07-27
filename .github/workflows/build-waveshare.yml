@@ -72,6 +72,7 @@ jobs:
           board_build.partitions = default_16MB.csv
           
           build_flags =
+            -Iinclude  # <--- ВОТ ЭТОТ ФЛАГ РЕШАЕТ ОШИБКУ
             -O3
             -DCORE_DEBUG_LEVEL=0
             -DARDUINO_USB_CDC_ON_BOOT=1
