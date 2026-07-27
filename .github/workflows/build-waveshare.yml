@@ -24,7 +24,7 @@ jobs:
           python -m pip install --upgrade pip
           pip install platformio
 
-      - name: Prepare Waveshare Vendor Libs & Custom Partitions
+      - name: Prepare Waveshare Vendor Libs & Headers
         run: |
           set -e
           git clone --depth 1 https://github.com/waveshareteam/ESP32-S3-Touch-LCD-3.5.git /tmp/waveshare
@@ -41,19 +41,6 @@ jobs:
             echo '#include <Arduino.h>' > include/pins_arduino.h
           fi
 
-          # Создаем надежный кастомный файл разметки памяти для 16MB flash (partitions.csv)
-          cat << 'EOF' > partitions.csv
-# Name,   Type, SubType, Offset,  Size, Flags
-nvs,      data, nvs,     ,        0x4000,
-otadata,  data, ota,     ,        0x2000,
-phy_init, data, phy,     ,        0x1000,
-factory,  app,  factory, ,        0x400000,
-ota_0,    app,  ota_0,   ,        0x400000,
-ota_1,    app,  ota_1,   ,        0x400000,
-storage,  data, spiffs,  ,        0x3B0000,
-EOF
-          echo "Custom 16MB partitions.csv created successfully"
-
       - name: Patch XPowersLib (Disable PMU Watchdog)
         run: |
           set -e
@@ -61,7 +48,7 @@ EOF
             find lib/XPowersLib/src -type f -name '*.cpp' -print0 | xargs -0 sed -i -e "s/enableWatchdog();/disableWatchdog();\n    \/\/ Disabled by CI/g" || true
           fi
 
-      - name: Configure PlatformIO Environment with Custom Partitions
+      - name: Configure PlatformIO Environment
         run: |
           set -e
           if ! grep -q '\[env:esp32s3-waveshare\]' platformio.ini 2>/dev/null; then
@@ -72,7 +59,7 @@ EOF
           framework = arduino
           board = esp32-s3-devkitc-1
           board_build.flash_size = 16MB
-          board_build.partitions = partitions.csv
+          board_build.partitions = default_16MB.csv
           
           build_flags =
             -O3
@@ -80,6 +67,7 @@ EOF
             -DARDUINO_USB_CDC_ON_BOOT=1
             -DARDUINO_USB_MODE=1
             -DBOARD_HAS_PSRAM
+            -mfix-esp32-psram-cache-issue
             -DCONFIG_PMU_SDA=8
             -DCONFIG_PMU_SCL=7
             -DCONFIG_PMU_IRQ=15
