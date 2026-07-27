@@ -24,7 +24,7 @@ jobs:
           python -m pip install --upgrade pip
           pip install platformio
 
-      - name: Prepare Waveshare Vendor Libs
+      - name: Prepare Waveshare Vendor Libs & Force Missing Periman Header
         run: |
           set -e
           git clone --depth 1 https://github.com/waveshareteam/ESP32-S3-Touch-LCD-3.5.git /tmp/waveshare
@@ -36,15 +36,33 @@ jobs:
             cp -R /tmp/waveshare/Arduino/libraries/TFT_eSPI lib/ || true
           fi
 
-      - name: Ensure include/pins_arduino.h exists
-        run: |
-          set -e
+          # Создаем папку include и закидываем туда заглушки для периферии, если их нет в ядре
           mkdir -p include
           if [ -f "boards/esp32-s3-touch-lcd-3-5/pins_arduino.h" ]; then
             cp boards/esp32-s3-touch-lcd-3-5/pins_arduino.h include/
           else
             echo '#include <Arduino.h>' > include/pins_arduino.h
           fi
+
+          # Создаем пустой esp32-hal-periman.h, чтобы старый HAL не падал при компиляции SD-карты
+          cat << 'EOF' > include/esp32-hal-periman.h
+          #pragma once
+          // Dummy periman header for legacy HAL compatibility on modern ESP32 cores
+          #ifdef __cplusplus
+          extern "C" {
+          #endif
+          typedef enum {
+              ESP32_PERIPHERAL_GPIO = 0,
+              ESP32_PERIPHERAL_SPI,
+              ESP32_PERIPHERAL_SDMMC
+          } periman_module_t;
+          inline bool perimanClearBus(void* pin) { return true; }
+          inline bool perimanSetBus(void* pin, periman_module_t type, void* obj) { return true; }
+          #ifdef __cplusplus
+          }
+          #endif
+          EOF
+          echo "Successfully injected periman.h dummy header"
 
       - name: Patch XPowersLib (Disable PMU Watchdog)
         run: |
@@ -53,14 +71,13 @@ jobs:
             find lib/XPowersLib/src -type f -name '*.cpp' -print0 | xargs -0 sed -i -e "s/enableWatchdog();/disableWatchdog();\n    \/\/ Disabled by CI/g" || true
           fi
 
-      - name: Configure PlatformIO Environment with Modern Core
+      - name: Configure PlatformIO Environment
         run: |
           set -e
           if ! grep -q '\[env:esp32s3-waveshare\]' platformio.ini 2>/dev/null; then
             cat << 'EOF' >> platformio.ini
 
           [env:esp32s3-waveshare]
-          # Используем стабильную свежую версию платформы espressif32 (версия 6.x+ имеет поддержку periman)
           platform = espressif32 @ ~6.6.0
           framework = arduino
           board = esp32-s3-devkitc-1
