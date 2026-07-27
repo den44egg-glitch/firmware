@@ -53,14 +53,15 @@ jobs:
             find lib/XPowersLib/src -type f -name '*.cpp' -print0 | xargs -0 sed -i -e "s/enableWatchdog();/disableWatchdog();\n    \/\/ Disabled by CI/g" || true
           fi
 
-      - name: Configure PlatformIO Environment with Screen Macro Flags
+      - name: Configure PlatformIO Environment with Modern Core
         run: |
           set -e
           if ! grep -q '\[env:esp32s3-waveshare\]' platformio.ini 2>/dev/null; then
             cat << 'EOF' >> platformio.ini
 
           [env:esp32s3-waveshare]
-          platform = espressif32
+          # Используем стабильную свежую версию платформы espressif32 (версия 6.x+ имеет поддержку periman)
+          platform = espressif32 @ ~6.6.0
           framework = arduino
           board = esp32-s3-devkitc-1
           board_build.flash_size = 16MB
@@ -81,6 +82,8 @@ jobs:
             ${env.lib_deps}
             SPI
             Wire
+            SD
+            FS
           EOF
           fi
 
