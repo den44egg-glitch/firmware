@@ -34,12 +34,22 @@ jobs:
           cp -R /tmp/waveshare/Arduino/libraries/GFX_Library_for_Arduino lib/ || true
           cp -R /tmp/waveshare/Arduino/libraries/lvgl lib/ || true
           
+          # Создаём правильный pins_arduino.h для модели 3.5B-C (AXS15231B 320x480 SPI)
           mkdir -p include
-          if [ -f "boards/esp32-s3-touch-lcd-3-5/pins_arduino.h" ]; then
-            cp boards/esp32-s3-touch-lcd-3-5/pins_arduino.h include/
-          else
-            echo '#include <Arduino.h>' > include/pins_arduino.h
-          fi
+          cat << 'EOF' > include/pins_arduino.h
+          #pragma once
+          #include <Arduino.h>
+          
+          // Waveshare ESP32-S3-Touch-LCD-3.5B-C
+          // Display: AXS15231B 320x480 (SPI)
+          #define LCD_WIDTH   320
+          #define LCD_HEIGHT  480
+          
+          // PMU (AXP2101)
+          #define CONFIG_PMU_SDA   8
+          #define CONFIG_PMU_SCL   7
+          #define CONFIG_PMU_IRQ   15
+          EOF
 
       - name: Patch XPowersLib (Disable PMU Watchdog)
         run: |
@@ -67,21 +77,14 @@ jobs:
             -DARDUINO_USB_CDC_ON_BOOT=1
             -DARDUINO_USB_MODE=1
             -DBOARD_HAS_PSRAM
-            -mfix-esp32-psram-cache-issue
             -DCONFIG_PMU_SDA=8
             -DCONFIG_PMU_SCL=7
             -DCONFIG_PMU_IRQ=15
             -DHAS_SCREEN=1
             -DWAVESHARE_ESP32_S3_TOUCH_LCD_3_5=1
-            -DLCD_WIDTH=800
+            -DLCD_WIDTH=320
             -DLCD_HEIGHT=480
-            -DLCD_DE=40
-            -DLCD_VSYNC=41
-            -DLCD_HSYNC=42
-            -DLCD_PCLK=39
-            -DLCD_R0=45 -DLCD_R1=48 -DLCD_R2=47 -DLCD_R3=0 -DLCD_R4=21
-            -DLCD_G0=14 -DLCD_G1=38 -DLCD_G2=18 -DLCD_G3=17 -DLCD_G4=16 -DLCD_G5=15
-            -DLCD_B0=8  -DLCD_B1=3  -DLCD_B2=46 -DLCD_B3=9  -DLCD_B4=1
+            -DAXS15231B=1
             
           lib_deps =
             Wire
