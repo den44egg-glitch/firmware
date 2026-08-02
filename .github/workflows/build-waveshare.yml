@@ -24,82 +24,12 @@ jobs:
           python -m pip install --upgrade pip
           pip install platformio
 
-      - name: Prepare Waveshare Vendor Libs & Headers
-        run: |
-          set -e
-          git clone --depth 1 https://github.com/waveshareteam/ESP32-S3-Touch-LCD-3.5.git /tmp/waveshare
-          mkdir -p lib
-          
-          cp -R /tmp/waveshare/Arduino/libraries/XPowersLib lib/ || true
-          cp -R /tmp/waveshare/Arduino/libraries/GFX_Library_for_Arduino lib/ || true
-          cp -R /tmp/waveshare/Arduino/libraries/lvgl lib/ || true
-          
-          # Создаём правильный pins_arduino.h для модели 3.5B-C (AXS15231B 320x480 SPI)
-          mkdir -p include
-          cat << 'EOF' > include/pins_arduino.h
-          #pragma once
-          #include <Arduino.h>
-          
-          // Waveshare ESP32-S3-Touch-LCD-3.5B-C
-          // Display: AXS15231B 320x480 (SPI)
-          #define LCD_WIDTH   320
-          #define LCD_HEIGHT  480
-          
-          // PMU (AXP2101)
-          #define CONFIG_PMU_SDA   8
-          #define CONFIG_PMU_SCL   7
-          #define CONFIG_PMU_IRQ   15
-          EOF
-
-      - name: Patch XPowersLib (Disable PMU Watchdog)
-        run: |
-          set -e
-          if [ -d lib/XPowersLib/src ]; then
-            find lib/XPowersLib/src -type f -name '*.cpp' -print0 | xargs -0 sed -i -e "s/enableWatchdog();/disableWatchdog();\n    \/\/ Disabled by CI/g" || true
-          fi
-
-      - name: Configure PlatformIO Environment
-        run: |
-          set -e
-          if ! grep -q '\[env:esp32s3-waveshare\]' platformio.ini 2>/dev/null; then
-            cat << 'EOF' >> platformio.ini
-
-          [env:esp32s3-waveshare]
-          platform = espressif32
-          framework = arduino
-          board = esp32-s3-devkitc-1
-          board_build.flash_size = 16MB
-          board_build.partitions = default_16MB.csv
-          
-          build_flags =
-            -Iinclude
-            -O3
-            -DCORE_DEBUG_LEVEL=0
-            -DARDUINO_USB_CDC_ON_BOOT=1
-            -DARDUINO_USB_MODE=1
-            -DBOARD_HAS_PSRAM
-            -DCONFIG_PMU_SDA=8
-            -DCONFIG_PMU_SCL=7
-            -DCONFIG_PMU_IRQ=15
-            -DHAS_SCREEN=1
-            -DWAVESHARE_ESP32_S3_TOUCH_LCD_3_5=1
-            -DLCD_WIDTH=320
-            -DLCD_HEIGHT=480
-            -DAXS15231B=1
-            
-          lib_deps =
-            Wire
-            SPI
-            lovyan03/LovyanGFX
-          EOF
-          fi
-
       - name: Build firmware
-        run: pio run -e esp32s3-waveshare -v
+        run: pio run -e waveshare-esp32s3-touch-lcd-3.5 -v
 
       - name: Upload firmware artifact
         if: success()
         uses: actions/upload-artifact@v4
         with:
           name: firmware-waveshare
-          path: .pio/build/esp32s3-waveshare/firmware.bin
+          path: .pio/build/waveshare-esp32s3-touch-lcd-3.5/firmware.bin
