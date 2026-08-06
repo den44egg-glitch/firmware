@@ -7,16 +7,16 @@
 *********************************************************************/
 void _setup_gpio() {
     // Display backlight
-    pinMode(TFT_BL, OUTPUT);
-    digitalWrite(TFT_BL, HIGH);
+    pinMode(BACKLIGHT, OUTPUT);
+    digitalWrite(BACKLIGHT, HIGH);
 
     // Touch CS - deassert
     pinMode(TOUCH_CS, OUTPUT);
     digitalWrite(TOUCH_CS, HIGH);
 
-    // SD CS - deassert  
-    pinMode(SD_CS, OUTPUT);
-    digitalWrite(SD_CS, HIGH);
+    // SD CS - deassert
+    pinMode(SDCARD_CS, OUTPUT);
+    digitalWrite(SDCARD_CS, HIGH);
 }
 
 /*********************************************************************
@@ -36,9 +36,8 @@ int getBattery() { return 0; }
 **  Set brightness value
 *********************************************************************/
 void _setBrightness(uint8_t brightval) {
-    // PWM backlight control
-    if(TFT_BL >= 0) {
-        ledcWrite(0, brightval);
+    if(BACKLIGHT >= 0) {
+        ledcWrite(TFT_BRIGHT_CHANNEL, brightval);
     }
 }
 

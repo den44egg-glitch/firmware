@@ -18,13 +18,13 @@ static const uint8_t RXD2 = 18;
 static const uint8_t SDA = 6;
 static const uint8_t SCL = 7;
 
-// SPI (shared bus for display and touch)
+// SPI
 static const uint8_t SS = 10;
-static const uint8_t MOSI = 11;
-static const uint8_t MISO = 13;
-static const uint8_t SCK = 12;
+static const uint8_t MOSI = 13;
+static const uint8_t MISO = 15;
+static const uint8_t SCK = 14;
 
-// GPIO mapping
+// GPIO
 static const uint8_t G0 = 0;
 static const uint8_t G1 = 1;
 static const uint8_t G2 = 2;
@@ -53,62 +53,5 @@ static const uint8_t G48 = 48;
 
 static const uint8_t ADC1 = 7;
 static const uint8_t ADC2 = 8;
-
-// Display ILI9488 pins
-#define TFT_MOSI 11
-#define TFT_MISO 13
-#define TFT_SCLK 12
-#define TFT_CS   10
-#define TFT_DC   9
-#define TFT_RST  48
-#define TFT_BL   2
-
-// Touch XPT2046 pins
-#define TOUCH_CS   3
-#define TOUCH_IRQ  4
-#define TOUCH_MOSI 11
-#define TOUCH_MISO 13
-#define TOUCH_SCLK 12
-
-// SD Card pins
-#define SD_MOSI 11
-#define SD_MISO 13
-#define SD_SCLK 12
-#define SD_CS   14
-
-// Bruce firmware specific defines
-#define FM_RSTPIN 40
-#define PIN_CLK 12
-#define I2S_SCLK_PIN 12
-#define I2S_DATA_PIN 46
-#define PIN_DATA 46
-
-#define RGB_LED -1
-
-#define BCLK 41
-#define WCLK 42
-#define DOUT 46
-
-#define BAD_TX SDA
-#define BAD_RX SCL
-
-#define HAS_BTN 0
-#define BTN_ALIAS "\"Ok\""
-#define BTN_PIN 0
-#define BTN_ACT LOW
-
-#define IR_TX_PINS '{{"IR LED", SDA}, {"Pin 1", 1}, {"Pin 2", 2}}'
-#define IR_RX_PINS '{{"IR RX", SCL}, {"Pin 1", 1}, {"Pin 2", 2}}'
-#define TXLED -1
-#define LED_ON HIGH
-#define LED_OFF LOW
-
-#define RF_TX_PINS '{{"RF TX", SDA}, {"Pin 1", 1}, {"Pin 2", 2}}'
-#define RF_RX_PINS '{{"RF RX", SCL}, {"Pin 1", 1}, {"Pin 2", 2}}'
-
-#define CC1101_GDO0_PIN 1
-#define CC1101_SS_PIN 10
-#define CC1101_MOSI_PIN MOSI
-#define CC1101_SCK_PIN SCK
 
 #endif /* Pins_Arduino_h */
