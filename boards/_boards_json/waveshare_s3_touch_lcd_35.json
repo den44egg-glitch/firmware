@@ -15,7 +15,10 @@
     "f_flash": "80000000L",
     "flash_mode": "qio",
     "mcu": "esp32s3",
-    "variant": "waveshare_s3_touch_lcd_35"
+    "variant": "waveshare_s3_touch_lcd_35",
+    "ram_size": "327680",
+    "maximum_ram_size": 327680,
+    "maximum_size": 16777216
   },
   "connectivity": [
     "wifi",
@@ -32,12 +35,14 @@
   "upload": {
     "flash_size": "16MB",
     "maximum_size": 16777216,
+    "maximum_ram_size": 327680,
     "protocol": "esptool",
     "protocols": [
       "esptool",
       "cmsis-dap",
       "jlink"
-    ]
+    ],
+    "speed": "460800"
   },
   "url": "https://www.waveshare.com/wiki/ESP32-S3-Touch-LCD-3.5",
   "vendor": "Waveshare"
